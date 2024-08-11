@@ -91,32 +91,62 @@ app.post('/login', async (req, res) => {
 
 //Products::
 app.get('/products', async (req, res) => {
-try {
-    const products = await products.findMany()
-    res.json(products)
-} catch (error) {
-    console.error(error)
-}
+    try {
+        const products = await products.findMany()
+        res.json(products)
+    } catch (error) {
+        console.error(error)
+    }
 })
 
 //orders::
 app.post('/orders', async (req, res) => {
-    const token  = req.cookies.token
+    const token = req.cookies.token
     if (!token) {
         return res.status(401).json({ error: "Not authenticated" })
     }
 
-    const {id} = jwt.verify(token,JWT_SECRET)
-    const {productId} = req.body
+    const { id } = jwt.verify(token, JWT_SECRET)
+    const { productId } = req.body
 
     //create Order:
-    const order = await prisma.order.create({data:{
-        userId:id ,
-        productId:productId
-    }})
+    const order = await prisma.order.create({
+        data: {
+            userId: id,
+            productId: productId
+        }
+    })
     res.json(order)
 })
 
-app.listen(PORT,()=>{
+//recommendation System::
+const recommendProducts = async (userId) => {
+    const userOrders = await prisma.order.findMany({ where: { userId }, include: { product: true } })
+    const productIds = userOrders.map(order => order.productId)
+    const allOrders = await prisma.order.findMany({ include: { user: true, product: true } })
+    const recommendations = {}
+
+    allOrders.forEach(order => {
+        if (!productIds.includes(order.productId)) {
+            if (!recommendations[order.productId]) {
+                recommendations[order.productId] = { count: 0, product: order.product }
+            }
+            recommendations[order.productId].count += 1
+        }
+    })
+    return Object.values(recommendations).sort((a, b) => b.count - a.count).map(rec => rec.product)
+}
+
+app.get('/recommendation', async (req, res) => {
+    const token = req.cookies.token
+    if (!token) {
+        return res.status(401).json({ error: "Not authenticated" })
+    }
+    const { id } = jwt.verify(token, JWT_SECRET)
+    const recommendations = await recommendProducts(id)
+    res.json(recommendations)
+})
+
+app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`)
 })
