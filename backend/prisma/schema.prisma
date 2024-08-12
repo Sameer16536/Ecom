@@ -21,15 +21,19 @@ model User {
   password String
   name     String
   orders   Order[]
+  Cart     Cart[]
 }
 
 model Product {
-  id          Int     @id @default(autoincrement())
+  id          Int      @id @default(autoincrement())
   name        String
   description String
   price       Float
-  category    String
+  imageUrl    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
   orders      Order[]
+  Cart        Cart[]
 }
 
 model Order {
@@ -38,4 +42,15 @@ model Order {
   productId Int
   user      User    @relation(fields: [userId], references: [id])
   product   Product @relation(fields: [productId], references: [id])
+}
+
+model Cart {
+  id        Int     @id @default(autoincrement())
+  userId    Int
+  productId Int
+  user      User    @relation(fields: [userId], references: [id])
+  product   Product @relation(fields: [productId], references: [id])
+  name      String
+  price     Float
+  bill      Float
 }
